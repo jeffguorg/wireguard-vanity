@@ -1,0 +1,12 @@
+[package]
+name = "wg-vanity-opencl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+opencl3 = "0.12"
+base64 = "0.22"
+curve25519-dalek = "5"
+
+[profile.release]
+opt-level = 3
