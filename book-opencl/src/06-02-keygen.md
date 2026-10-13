@@ -1,6 +1,6 @@
 # 6.2 splitmix64 与 clamp 的逐位复刻
 
-这节写 kernel 里的私钥派生：给定 seed 和 gid，确定性地产出一个已 clamp 的候选私钥。它必须和宿主端 `keygen.rs` **逐位一致**，否则自检（7.4）对不上。
+这节写私钥派生的基础：给定 seed 和 gid，确定性地产出一个已 clamp 的候选私钥。kernel 侧与宿主端 `keygen.rs` 必须**逐位一致**，否则自检（7.4）对不上。
 
 ## 派生方案
 
@@ -27,22 +27,9 @@ static u64 sm64_next(u64 *s) {
 }
 ```
 
-（`derive_key` 在文件中位于 `wg_pubkey` 之后，这里提前看，6.4 节写到那里时直接跳过它——也可以现在就按文件顺序留好位置。）
+> 💡 补给：C 里的 `u64 *s` 是「指向 u64 的指针」，约等于 Rust 的 `&mut u64`：`*s` 是解引用（读写指向的那个值），`&s` 是取地址。`sm64_next(&s)` 就相当于传一个可变借用进去，函数里的 `*s += ...` 改的是调用者的变量。
 
-```c
-// 派生第 gid 个候选私钥（已 clamp），与宿主端 keygen.rs 逐位一致
-static void derive_key(u64 seed, u64 gid, u64 *w) {
-    u64 s = seed + gid * 0x9E3779B97F4A7C15UL;
-    w[0] = sm64_next(&s);
-    w[1] = sm64_next(&s);
-    w[2] = sm64_next(&s);
-    w[3] = sm64_next(&s);
-    w[0] &= ~7UL;
-    w[3] = (w[3] & 0x7FFFFFFFFFFFFFFFUL) | 0x4000000000000000UL;
-}
-```
-
-最后两行就是 u64 形式的 clamp：`w[0] &= ~7` 清低 3 位（对应字节版 `k[0] &= 248`）；`w[3]` 清最高位、置位次高位（对应 `k[31] &= 127; k[31] |= 64`，注意小端序下 w[3] 的高字节就是 k[31]）。
+kernel 侧的 `derive_key`（调用 sm64_next 拼出私钥的那个函数）在文件中位于 `wg_pubkey` 之后，本节先不敲，6.4 节写到那里时再接上。
 
 ## 宿主端对照：keygen.rs
 
@@ -104,6 +91,8 @@ mod tests {
 > 💡 补给：`x.to_le_bytes()` 把 u64 拆成 8 个字节（小端）。`copy_from_slice` 把这 8 字节拷进 `key` 的对应切片。`w.iter().enumerate()` 是「迭代器 + 序号」的标准写法。
 
 敲完跑一下：`cargo test` 应该变成 4 个测试全过（新增 `keygen::tests::derived_keys_work`）。
+
+> 💡 补给：cargo 输出里**黄色 warning ≠ 红色 error**。这会你可能看到 `derive_key`、`splitmix64` 等函数「never used」的警告——是暂时的，第 7 章的 main 会用上它们。只要 `cargo test` 全绿就算过关。
 
 ## 小结
 

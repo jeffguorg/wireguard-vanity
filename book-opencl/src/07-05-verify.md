@@ -11,7 +11,7 @@ $ cargo run --release -- Hi
 前缀 "Hi"：期望尝试次数 ≈ 2^12.0
 私钥: FCO51GufpOG4j4jGgKel3h3xVMbvccSpLeO/v6BjB0I=
 公钥: HilR2hg5E1h/1W0aarTYEWZteZQSP5vZNqiagafgIEY=
-已尝试 0.00e9 次，速率 ...
+完成：共尝试 4194304 次，耗时 0.4s，平均 10.8 M/s
 ```
 
 （你的具体密钥会不一样——搜索起点是时间戳随机化的。）

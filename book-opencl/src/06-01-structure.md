@@ -24,7 +24,7 @@ gid ──①derive_key──► 候选私钥（4×u64，已 clamp）
 | `fe_carry` … `fe_mul121665` | 域运算（对应 fe.rs） | 6.3 |
 | `fe_invert` / `fe_tobytes` | 求逆 / 打包 | 6.4 |
 | `cswap` / `wg_pubkey` | 梯子主体（对应 x25519.rs） | 6.4 |
-| `derive_key` | 私钥派生（对应 keygen.rs） | 6.2 |
+| `derive_key` | 私钥派生（对应 keygen.rs） | 6.2（宿主端）、6.4（kernel 版） |
 | `__kernel vanity` | 搜索入口 | 6.5、6.6 |
 | `__kernel selftest_keys` | 自检入口 | 6.7 |
 

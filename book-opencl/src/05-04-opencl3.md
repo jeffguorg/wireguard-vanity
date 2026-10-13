@@ -4,7 +4,7 @@
 
 ## opencl3 是什么
 
-`opencl3` 是 OpenCL 3.0 C API 的 Rust 封装，结构很薄：每个 Rust 类型包一个 C 句柄，每个方法转调一个 C 函数。我们只用其中 7 个类型（最终 main.rs 的 import 列表）：
+`opencl3` 是 OpenCL 3.0 C API 的 Rust 封装，结构很薄：每个 Rust 类型包一个 C 句柄，每个方法转调一个 C 函数。我们只用到下面 7 行 import（最终 main.rs 的完整 import 列表）：
 
 ```rust
 use opencl3::command_queue::CommandQueue;

@@ -34,7 +34,7 @@ opt-level = 3
 - **`base64 = "0.22"`**：打印密钥时的 base64 编码；
 - **`curve25519-dalek = "5"`**：成熟的参考实现，只用在测试和自检里当「裁判」。
 
-`[profile.release] opt-level = 3`：release 模式开到最高优化等级。
+`[profile.release] opt-level = 3`：release 模式开到最高优化等级（不写也是 3，这里只是显式声明）。
 
 > 💡 补给：`edition = "2021"` 是 Rust 的版本代号（2015/2018/2021/2024），决定语言的一些默认行为，照抄即可。`[profile.release]` 段对 `cargo build --release` 生效。
 

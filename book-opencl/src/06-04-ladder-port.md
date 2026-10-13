@@ -184,9 +184,28 @@ static void wg_pubkey(const u64 *w, u8 *out) {
 和 Rust 版的两处差异，都值得琢磨：
 
 1. **取标量第 t 位**：Rust 版在字节数组上取位（`s[t/8] >> (t&7)`）；kernel 版直接在 4 个 u64 上取（`w[t>>6] >> (t&63)`，t/64 号字的第 t%64 位）——因为私钥在这边本来就是 u64 形式，省掉一次拆字节；
-2. **clamp 不在梯子里**：kernel 的 clamp 已在 `derive_key` 里做过（6.2 节），`wg_pubkey` 直接吃处理好的 u64。
+2. **clamp 不在梯子里**：kernel 的 clamp 在 `derive_key` 里做（宿主端版本 6.2 节已经写过，kernel 版本节末尾敲入），`wg_pubkey` 直接吃处理好的 u64。
 
-（文件中接下来是 6.2 节已经看过的 `derive_key`，然后是两个 `__kernel` 入口，下三节写。）
+## derive_key
+
+文件中接下来是 `derive_key`——6.2 节已经写过它的宿主端孪生（keygen.rs），现在把 kernel 版敲进来，位置就接在上面 `wg_pubkey` 的 `}` 之后：
+
+```c
+// 派生第 gid 个候选私钥（已 clamp），与宿主端 keygen.rs 逐位一致
+static void derive_key(u64 seed, u64 gid, u64 *w) {
+    u64 s = seed + gid * 0x9E3779B97F4A7C15UL;
+    w[0] = sm64_next(&s);
+    w[1] = sm64_next(&s);
+    w[2] = sm64_next(&s);
+    w[3] = sm64_next(&s);
+    w[0] &= ~7UL;
+    w[3] = (w[3] & 0x7FFFFFFFFFFFFFFFUL) | 0x4000000000000000UL;
+}
+```
+
+最后两行就是 u64 形式的 clamp：`w[0] &= ~7` 清低 3 位（对应字节版 `k[0] &= 248`）；`w[3]` 清最高位、置位次高位（对应 `k[31] &= 127; k[31] |= 64`，注意小端序下 w[3] 的高字节就是 k[31]）。
+
+再往文件后面是两个 `__kernel` 入口，下三节写。
 
 > 💡 补给：`fe z2 = {{ 0 }};` 是 C 的零初始化惯例：只给第一个元素赋 0，其余自动为 0。`a->v[i]` 等价于 `(*a).v[i]`，通过指针取字段。
 

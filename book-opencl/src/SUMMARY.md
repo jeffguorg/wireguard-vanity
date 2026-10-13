@@ -11,9 +11,10 @@
 # 第 2 章 环境与工具
 
 - [2.1 ssh 登录 GPU 主机](02-01-ssh.md)
-- [2.2 安装 Rust 与 cargo 上手](02-02-rust.md)
-- [2.3 安装 OpenCL 运行时](02-03-opencl-runtime.md)
-- [2.4 用 clinfo 验证](02-04-clinfo.md)
+- [2.2 在远程主机上编辑文件](02-02-editing.md)
+- [2.3 安装 Rust 与 cargo 上手](02-03-rust.md)
+- [2.4 安装 OpenCL 运行时](02-04-opencl-runtime.md)
+- [2.5 用 clinfo 验证](02-05-clinfo.md)
 
 # 第 3 章 背景知识
 

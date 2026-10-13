@@ -1,4 +1,4 @@
-# 5.1 平台/设备/上下文/命令队列的心智模型
+# 5.1 平台/设备/上下文/命令队列
 
 这节建立 OpenCL 主机侧的四个核心概念。不急着写代码——第 7 章每一行宿主代码都对应这里的一个概念。
 
@@ -13,7 +13,7 @@
 
 逐个说：
 
-- **平台（Platform）**：一个 OpenCL 实现。2.4 节 `clinfo` 里的 "AMD Accelerated Parallel Processing" 就是一个平台；
+- **平台（Platform）**：一个 OpenCL 实现。2.5 节 `clinfo` 里的 "AMD Accelerated Parallel Processing" 就是一个平台；
 - **设备（Device）**：平台下的一块可计算硬件。我们用 `CL_DEVICE_TYPE_GPU` 过滤出显卡；
 - **上下文（Context）**：绑定设备后创建的工作环境，之后分配的 buffer、编译的 program 都挂在它名下；
 - **命令队列（CommandQueue）**：发给 GPU 的所有任务（写数据、跑 kernel、读数据）都塞进队列，GPU 按序消化。
