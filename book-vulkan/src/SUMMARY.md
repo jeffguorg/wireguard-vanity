@@ -49,6 +49,7 @@
   - [7.5 主循环：push constants → dispatch → fence → 读结果](07-05-main-loop.md)
   - [7.6 selftest：与 dalek 对拍](07-06-selftest.md)
   - [7.7 输出与 wg pubkey 交叉验证](07-07-output-verify.md)
+  - [7.8 常见报错速查](07-08-troubleshooting.md)
 - [第 8 章 运行、性能与练习]()
   - [8.1 实测数据、与 OpenCL 版的对比](08-01-benchmark.md)
   - [8.2 调优方向与练习题](08-02-tuning.md)

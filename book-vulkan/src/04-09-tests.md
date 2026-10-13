@@ -1,8 +1,8 @@
 # 4.9 单元测试：RFC 7748 向量 + dalek 对拍
 
-这节给 `x25519.rs` 补上测试模块，然后跑通全套 `cargo test`。从此 CPU 参考实现就是「可信的」，第 6 章的 GLSL 翻译以它为准。
+这节给 `x25519.rs` 和 `keygen.rs` 补上测试模块，然后跑通全套 `cargo test`。从此 CPU 参考实现就是「可信的」，第 6 章的 GLSL 翻译以它为准。
 
-## 测试代码
+## x25519.rs 的测试
 
 接在 `x25519_impl` 之后：
 
@@ -84,6 +84,27 @@ mod tests {
 }
 ```
 
+
+## 补上 keygen.rs 的测试
+
+4.1 节写 `keygen.rs` 时把测试模块留到了现在（它要调用 `x25519_base`，4.1 时还没有）——与 prefix.rs 的测试推迟到 7.7 节是同一模式。追加到 `src/keygen.rs` 末尾：
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::x25519;
+
+    /// 派生出的私钥必须能通过 x25519_base 正常计算（冒烟测试）。
+    #[test]
+    fn derived_keys_work() {
+        for gid in 0..3u64 {
+            let key = derive_key(42, gid);
+            let _ = x25519::x25519_base(&key);
+        }
+    }
+}
+```
 ## 三层防线
 
 1. **RFC 7748 单向量**：官方给的「输入私钥 → 输出公钥」，错了说明实现有硬错误；
@@ -103,6 +124,6 @@ test x25519::tests::matches_dalek ... ok
 test result: ok. 4 passed; 0 failed
 ```
 
-4 个测试全绿（第 4 个是 4.1 节 keygen.rs 自带的冒烟测试）。如果哪个红了，回去逐行对照第 4 章的代码块——99% 是敲错了系数或循环范围。
+4 个测试全绿：x25519 的 3 个 + keygen 的 1 个（本节刚补的冒烟测试）。如果哪个红了，回去逐行对照第 4 章的代码块——99% 是敲错了系数或循环范围。
 
-💡 **补给：测试也可能编译警告。** 占位 main.rs 里有些函数暂时没人调用，会有 `dead_code` 警告，无害；第 7 章写完真正的 main 就消失了。
+💡 **补给：测试也可能编译警告。**（如果看到 dead_code 警告，无害，第 7 章写完 main 就消失。）

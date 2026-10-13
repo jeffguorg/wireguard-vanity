@@ -77,3 +77,5 @@ pub fn invert(z: &Fe) -> Fe {
 💡 **补给：`let t0 = mul(&t0, &t1)` 的遮蔽（shadowing）。** Rust 允许同名再绑定，旧值被「遮蔽」。这里把早先的 z^2 乘进 z^11 得到新的 t0（z^11），后面的段还要用它。遮蔽让「每个中间结果只用一次」的链条读起来更清晰。
 
 至此 `fe.rs` 的运算部分齐了：carry / add / sub / mul / sq / mul121665 / invert。下一节写最后两个函数：字节打包与解包。
+
+此时 `cargo test` 应能编译通过、跑过已有测试。

@@ -1,24 +1,6 @@
 # 7.7 输出与 wg pubkey 交叉验证
 
-这节收尾：补上 main 末尾的统计、prefix.rs 的测试模块，然后用官方 `wg` 命令做端到端验证。
-
-## main 的最后几行
-
-接在 7.5 节的主循环之后：
-
-```rust
-    let secs = t_start.elapsed().as_secs_f64();
-    eprintln!(
-        "完成：共尝试 {} 次，耗时 {:.1}s，平均 {:.1} M/s",
-        total,
-        secs,
-        total as f64 / secs / 1e6
-    );
-    Ok(())
-}
-```
-
-`main` 返回 `Ok(())` 时进程正常退出；任何一步的 `Err` 都会被 Rust 运行时打印出来并以非零码退出。
+这节收尾：补上 prefix.rs 的测试模块，然后跑一次真搜索，用官方 `wg` 命令做端到端验证。
 
 ## 补上 prefix.rs 的测试
 

@@ -74,4 +74,14 @@ use vulkano::VulkanLibrary;
 
 > 📝 替换占位时，**暂时保留文件末尾的 `fn main() {}`**，否则 bin crate 没有入口编译不过。真正的 main 在 7.5 节写。
 
-后面三节按文件顺序补全：常量与 Push 结构体 + 初始化（7.2）、加载 shader 与管线（7.3）、dispatch（7.4）。
+## main.rs 最终结构地图
+
+后面四节按讲解顺序补全 main.rs；**在文件中的最终位置**以此表为准（仿 6.1 节的地图）：
+
+```text
+文件头（mod 声明 + import，本节）→ 常量 SHADER_SPV/SELFTEST_SPV/MAX_HITS 与 Push 结构体（7.2）
+→ pack_words / load_shader / make_pipeline（7.3）→ Gpu 结构体与 init()（7.2）
+→ dispatch()（7.4）→ main()（7.5/7.6）
+```
+
+讲解顺序和文件顺序有一处不一致：7.2 的 `Gpu`/`init()` 在文件中位于 7.3 的三个 helper **之后**。敲代码时按本表的位置放即可，各节会再提醒。

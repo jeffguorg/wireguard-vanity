@@ -5,8 +5,8 @@
 ## 建项目
 
 ```console
-$ cargo new vulkan-vanity-demo --bin
-$ cd vulkan-vanity-demo
+$ cargo new wg-vanity-vulkan
+$ cd wg-vanity-vulkan
 ```
 
 ## Cargo.toml
@@ -35,20 +35,18 @@ opt-level = 3
 第 4 章我们只关心库代码，`src/main.rs` 先放一个占位（第 7 章会整份替换）：
 
 ```rust
-mod fe;
 mod keygen;
-mod x25519;
 
 fn main() {}
 ```
 
-💡 **补给：mod。** Rust 里 `mod fe;` 声明「本 crate 有一个模块，代码在 `src/fe.rs`」。不写这行，文件放那儿编译器也不看。测试时 `cargo test` 会把 main.rs 连同三个模块一起编译，模块里 `#[cfg(test)]` 的测试函数全部执行。
+💡 **补给：mod。** Rust 里 `mod keygen;` 声明「本 crate 有一个模块，代码在 `src/keygen.rs`」。不写这行，文件放那儿编译器也不看。fe.rs（4.2 节）和 x25519.rs（4.8 节）到位时会各自补上对应的 `mod` 行。
 
 ## keygen.rs：私钥派生
 
 每个 GPU 线程用 `seed + gid × φ` 作为 splitmix64 的状态，连取 4 个 u64 拼成 32 字节，再 clamp。φ 是黄金比例常数（奇数），保证不同 gid 的状态互不重复。CPU 版必须与 shader 逐位一致，因为 selftest 要靠它生成参考答案。
 
-创建 `src/keygen.rs`，完整内容：
+创建 `src/keygen.rs`（测试模块推迟到 4.9 节补敲——它要调用还没写的 `x25519.rs`，与 prefix.rs 的测试推迟到 7.7 是同一模式）：
 
 ```rust
 //! 与 GPU kernel 共享的私钥派生逻辑。
@@ -83,21 +81,6 @@ pub fn derive_key(seed: u64, gid: u64) -> [u8; 32] {
         key[i * 8..i * 8 + 8].copy_from_slice(&x.to_le_bytes());
     }
     key
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::x25519;
-
-    /// 派生出的私钥必须能通过 x25519_base 正常计算（冒烟测试）。
-    #[test]
-    fn derived_keys_work() {
-        for gid in 0..3u64 {
-            let key = derive_key(42, gid);
-            let _ = x25519::x25519_base(&key);
-        }
-    }
 }
 ```
 

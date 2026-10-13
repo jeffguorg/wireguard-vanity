@@ -54,11 +54,11 @@ layout(set = 0, binding = 0) buffer Results {
 
 ```text
 文件头（本节）→ push constant 块（6.2）→ buffer 声明（本节）
-→ fe 结构体与常量（6.4）→ sm64_next（6.3）→ fe_carry/fe_add/fe_sub/fe_mul（6.4）
-→ fe_sq/fe_mul121665/fe_invert/cswap/wg_pubkey（6.5）→ fe_towords（6.6）
-→ derive_key（6.3 讲，放这里）→ main（6.6/6.7）
+→ fe 结构体与常量 M26/M25（6.3）→ sm64_next（6.3）→ fe_carry/fe_add/fe_sub/fe_mul（6.4）
+→ fe_sq/fe_mul121665/fe_invert（6.5）→ fe_towords（6.6 讲，但放在 fe_invert 之后）
+→ cswap/wg_pubkey（6.5）→ derive_key（6.3 讲，放这里）→ main（6.6/6.7）
 ```
 
-讲解顺序和文件顺序有两处不一致（derive_key 提前讲、fe_towords 推后讲），敲代码时按本表的位置放即可，到时各节会再提醒。
+讲解顺序和文件顺序有两处不一致（derive_key 提前讲；fe_towords 在 6.6 才讲，但要放在 fe_invert 之后——wg_pubkey 调用它，GLSL 要求先声明后调用），敲代码时按本表的位置放即可，到时各节会再提醒。
 
 下一节：push constant 块——CPU 和 GPU 之间的 104 字节约定。

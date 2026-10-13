@@ -1,6 +1,6 @@
 # 6.4 域运算从 Rust 到 GLSL 的对照
 
-这节给出 fe 结构体、常量、carry、加减和乘法。翻译是机械的，先讲三条规则，再贴代码。
+这节给出 carry、加减和乘法（fe 结构体与常量 6.3 节已敲）。翻译是机械的，先讲三条规则，再贴代码。
 
 ## 三条翻译规则
 
@@ -8,15 +8,9 @@
 2. Rust 的引用参数 `&Fe` → GLSL 直接按值传（结构体参数默认 `in`，返回新值），风格正好一致；
 3. Rust 常量 `(1 << 26) - 1` → GLSL 十六进制字面量 `0x3ffffffUL`（记得 UL 后缀）。
 
-## 结构体、常量、carry、add、sub
+## carry、add、sub
 
-```glsl
-struct fe { uint64_t v[10]; };
-
-const uint64_t M26 = 0x3ffffffUL;
-const uint64_t M25 = 0x1ffffffUL;
-```
-
+fe 结构体和 M26/M25 常量 6.3 节已经敲过；域运算从这里开始，接在 sm64_next 之后：
 ```glsl
 // ---------------- 域运算 ----------------
 fe fe_carry(fe h) {

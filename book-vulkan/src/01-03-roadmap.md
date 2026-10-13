@@ -33,9 +33,8 @@ vulkan/
 | 2 | 装好 Rust、Vulkan 驱动、glslang | `vulkaninfo --summary` |
 | 4 | CPU 参考实现 | `cargo test`（RFC 7748 + dalek 对拍） |
 | 6 | 搜索 shader | `glslangValidator` 编译通过 |
-| 7 | 宿主程序 | `--selftest` GPU 与 dalek 对拍 |
-| 8 | 实测与调优 | 跑出真实私钥，`wg pubkey` 验证 |
-
+| 7 | 宿主程序 | `--selftest` GPU 与 dalek 对拍；跑出真实私钥，`wg pubkey` 验证（7.7） |
+| 8 | 实测与调优 | 对比 Vulkan/OpenCL 速率 |
 ## 跟书姿势
 
 - 第 4、6、7 章是「跟着手写」的核心章节，代码块都是最终文件的逐字内容，按节拼接即为完整文件（个别函数在文件中的位置与讲解顺序不同，书中会注明）。

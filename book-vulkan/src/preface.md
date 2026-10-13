@@ -8,8 +8,8 @@
 
 ```console
 $ cargo run --release -- hSD
-前缀 "hSD"：期望尝试次数 ≈ 2^18.0
 使用设备: AMD Radeon RX 7900 XTX (RADV NAVI31, LLVM ...)
+前缀 "hSD"：期望尝试次数 ≈ 2^18.0
 私钥: YOu8...（base64）
 公钥: hSDw...（base64，正好以 hSD 开头）
 ```

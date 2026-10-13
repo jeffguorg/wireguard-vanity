@@ -14,7 +14,7 @@ Vulkan 驱动**不接受 GLSL 源码**。无论你用什么语言写 shader，�
 
 ## 手动编一次
 
-虽然我们还没有写项目的 shader，先用个最小例子体验（在任意目录）：
+虽然我们还没有写项目的 shader，先用个最小例子体验（在任意目录，用 heredoc 或编辑器创建这个文件都行）：
 
 ```console
 $ cat > mini.comp << 'EOF'

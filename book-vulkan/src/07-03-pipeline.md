@@ -1,6 +1,6 @@
 # 7.3 加载 SPIR-V 与创建 compute pipeline
 
-这节写两个小函数：`pack_words`（前缀字节打包）、`load_shader`（SPIR-V → ShaderModule）、`make_pipeline`（ShaderModule → ComputePipeline）。接在 `init()` 之后。
+这节写三个小函数：`pack_words`（前缀字节打包）、`load_shader`（SPIR-V → ShaderModule）、`make_pipeline`（ShaderModule → ComputePipeline）。按 7.1 的地图，它们放在 `Push` 结构体之后、`Gpu`/`init()` 之前。
 
 ## pack_words 与 load_shader
 

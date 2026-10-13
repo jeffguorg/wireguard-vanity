@@ -2,9 +2,24 @@
 
 这节写私钥派生：从 `(seed, gid)` 确定性生成一个合法私钥。它和 4.1 节 `keygen.rs` 是同一逻辑的两种语言，可以逐行对照。
 
+## fe 结构体与掩码常量
+
+按 6.1 的文件地图，buffer 声明之后首先是域元素的类型定义和两个 limb 掩码（它们本属 6.4 节的域运算主题，但 sm64_next 之后的代码都要用，先敲上）：
+
+```glsl
+struct fe { uint64_t v[10]; };
+
+const uint64_t M26 = 0x3ffffffUL;
+const uint64_t M25 = 0x1ffffffUL;
+```
+
+`uint64_t` 就是 6.1 节 `#extension` 开启的 64 位无符号整数；`struct fe` 对应 Rust 的 `struct Fe(pub [u64; 10])`（3.3 节的 10 limb 表示），成员从 `.0[i]` 变成 `.v[i]`。M26/M25 是 26/25 bit 的掩码，即 Rust 版 `(1 << 26) - 1` 的十六进制写法。
+
+💡 **补给：UL 后缀。** GLSL 里 `uint64_t` 字面量要加 `UL` 后缀（如 `0x3ffffffUL`），否则按 32 位解析会被截断——这是移植时最容易漏的东西，后面每个常量都要带。
+
 ## sm64_next
 
-按 6.1 的文件地图，这个函数放在 fe 结构体之后（下一节会先把结构体补上；顺序以地图为准）：
+接在上面的常量之后（与 shader.comp 的实际顺序一致）：
 
 ```glsl
 // ---------------- splitmix64 私钥派生 ----------------
@@ -23,7 +38,7 @@ uint64_t sm64_next(inout uint64_t s) {
 - Rust 的 `s: &mut u64` → GLSL 的 `inout uint64_t s`。
 - Rust 的 `wrapping_add`/`wrapping_mul` → GLSL 里直接写 `+`、`*`，`uint64_t` 算术本来就回绕，语义自动一致。
 
-💡 **补给：UL 后缀与 inout。** GLSL 里 `uint64_t` 字面量要加 `UL` 后缀（如 `0x9E3779B97F4A7C15UL`），否则按 32 位解析会被截断——这是移植时最容易漏的东西。`inout` 是参数传递模式：函数内对参数的修改会写回调用方的变量，相当于 Rust 的 `&mut`（GLSL 没有指针，靠参数模式表达）。
+💡 **补给：inout。** `inout` 是参数传递模式：函数内对参数的修改会写回调用方的变量，相当于 Rust 的 `&mut`（GLSL 没有指针，靠参数模式表达）。UL 后缀刚说过——`0x9E3779B97F4A7C15UL` 少了它就会被截成 32 位。
 
 ## derive_key
 

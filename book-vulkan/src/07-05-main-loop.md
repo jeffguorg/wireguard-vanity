@@ -136,4 +136,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `for round in 0u64..` 是无穷 range 迭代器，唯一的出口是 `break`（或 Ctrl-C）。
 
-还差最后一步：main 末尾的统计打印和 `Ok(())` 在 7.7 节。先别急着跑搜索——下一节补上 selftest 分支，先让 GPU 自证正确。
+## 收尾：统计打印与返回
+
+主循环之后，补上 main 的最后几行：
+
+```rust
+    let secs = t_start.elapsed().as_secs_f64();
+    eprintln!(
+        "完成：共尝试 {} 次，耗时 {:.1}s，平均 {:.1} M/s",
+        total,
+        secs,
+        total as f64 / secs / 1e6
+    );
+    Ok(())
+}
+```
+
+`main` 返回 `Ok(())` 时进程正常退出；任何一步的 `Err` 都会被 Rust 运行时打印出来并以非零码退出。统计打印走 stderr，和循环里的进度报告同一通道。
+
+至此 main 整体成型，`cargo run --release -- --help` 应该已经能编译通过。先别急着跑搜索——下一节补上 selftest 分支，先让 GPU 自证正确。

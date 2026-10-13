@@ -4,7 +4,7 @@
 
 ## dispatch()
 
-接在 `make_pipeline` 之后：
+接在 `init()` 之后：
 
 ```rust
 /// 在 GPU 上跑一轮：dispatch groups 个 workgroup，等待完成。
