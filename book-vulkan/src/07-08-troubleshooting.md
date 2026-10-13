@@ -1,6 +1,6 @@
 # 7.8 常见报错速查
 
-跟书过程中最常踩的四个坑，按报错信息对号入座。
+跟书过程中最常踩的五个坑，按报错信息对号入座。
 
 ## `无法运行 glslangValidator（请先安装 glslang）`
 
@@ -17,3 +17,7 @@ init() 枚举完所有物理设备都没找到支持 64 位整数 shader 的。�
 ## selftest 报 `自检失败：gid=N ...`
 
 GPU 算出的公钥与 dalek 参考值不一致，说明 shader 的数学有移植错误。用 6.3 节的 `derive_key`（种子 `0xDEAD_BEEF_CAFE_F00D` + 报错信息里的 gid）手工复现出错的那个私钥，再逐函数对照第 6 章 GLSL 与第 4 章 Rust（见 7.6 节末尾的排查建议）。最常见的元凶：`UL` 后缀漏写、进位位数 26/25 抄反。
+
+## build.rs panic：`glslangValidator 编译 shader.comp 失败`
+
+glslang 找到了、也跑了，但 shader 本身编译不过。别只看 panic 那一行——往上翻，glslangValidator 自己会打印出错的**文件名和行号**（形如 `shader.comp:127: error: ...`），拿着行号对照第 6 章的代码块逐行核，基本都是抄字错误：漏分号、`UL` 后缀、括号不配对。如果 shader 编译通过、是自检对拍红了，排查思路见 7.6 节末尾。

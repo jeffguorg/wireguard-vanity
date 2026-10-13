@@ -22,7 +22,7 @@ mod tests {
         for n in 1..=20 {
             let p = from_prefix(&b64[..n]).unwrap();
             assert!(p.matches(&pubkey), "前缀 {:?} 应匹配", &b64[..n]);
-            // 把前缀最后一个字符换掉，通常应不再匹配（构造一个必然不同的）
+            // 翻转公钥第 0 字节的最低位：n>1 时该字节掩码为 0xFF，必然不再匹配
             let mut bad = pubkey;
             bad[0] ^= 0x01;
             if n > 1 {
@@ -34,6 +34,7 @@ mod tests {
     #[test]
     fn rejects_bad_input() {
         assert!(from_prefix("").is_err());
+        assert!(from_prefix(&"A".repeat(43)).is_err());
         assert!(from_prefix(&"A".repeat(44)).is_err());
         assert!(from_prefix("ab= ").is_err());
     }

@@ -17,7 +17,7 @@ layout(push_constant) uniform Push {
 } pc;
 ```
 
-字段含义：`seed` 是本轮的种子；`patlen` 是要比对的字节数；`pat`/`mask` 是前缀翻译出的「字节模式 + 掩码」（3.1 节讲过由来），44 是按字符数取的宽松上限：43 个字符 × 6 bit = 258 bit，最多产生 33 字节；取 44 既保险，又正好是 11 个 uint。
+字段含义：`seed` 是本轮的种子；`patlen` 是要比对的字节数；`pat`/`mask` 是前缀翻译出的「字节模式 + 掩码」（3.1 节讲过由来），44 是按字符数取的宽松上限：前缀上限 42 个字符 × 6 bit = 252 bit，最多产生 32 字节；取 44 既保险，又正好是 11 个 uint。
 
 💡 **补给：44 字节塞进 uint 数组。** push constant 的默认布局规则（std430 风格的 scalar 对齐）按 4 字节为颗粒。我们把 pat 的 44 个字节按小端序每 4 个打包进一个 `uint`，共 11 个：第 i 字节住在 `pat[i/4]` 的第 (i%4)×8 个 bit。6.6 节 shader 端抠字节、7.3 节 Rust 端打包，用的是同一套小端约定。
 
@@ -76,9 +76,9 @@ impl Pattern {
 }
 
 pub fn from_prefix(prefix: &str) -> Result<Pattern, String> {
-    if prefix.is_empty() || prefix.len() > 43 {
+    if prefix.is_empty() || prefix.len() > 42 {
         return Err(format!(
-            "前缀长度需在 1..=43 之间（公钥 base64 共 44 字符，末位固定为 '='），当前 {}",
+            "前缀长度需在 1..=42 之间（43 个字符需要 33 字节的比较窗口，已超出公钥的 32 字节），当前 {}",
             prefix.len()
         ));
     }

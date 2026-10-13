@@ -27,7 +27,7 @@ vulkano 是 Vulkan API 的 Rust 安全封装：底层仍是 Vulkan 的那套对�
 | `Device`, `Queue`, `QueueCreateInfo` | 逻辑设备与队列 | 7.2 |
 | `ShaderModule` | 加载 SPIR-V | 7.3 |
 | `ComputePipeline`, `PipelineLayout` | 管线 | 7.3 |
-| `Buffer`, `Subbuffer`, `StandardMemoryAllocator` | 结果 buffer | 7.4 |
+| `Buffer`, `Subbuffer`, `StandardMemoryAllocator` | 结果 buffer | 7.4–7.6 |
 | `DescriptorSet`, `WriteDescriptorSet` | 绑定 buffer | 7.4 |
 | `AutoCommandBufferBuilder` | 录命令 | 7.4/7.5 |
 | `sync::now`, `GpuFuture` | 提交与 fence 等待 | 7.4/7.5 |

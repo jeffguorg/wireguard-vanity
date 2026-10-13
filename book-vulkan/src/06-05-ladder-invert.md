@@ -143,3 +143,5 @@ void wg_pubkey(uint64_t w[4], out uint pw[8]) {
 两处小改名：Rust 的 `c` 改成 `c2`（GLSL 里避免和常见变量混淆的口味选择），`da_plus_cb`/`da_minus_cb` 缩成 `dac`/`dmc`。`fe_towords` 还没写——下一节就是它，加上前缀匹配。
 
 输出不是 32 字节而是「8 个 uint」：GPU 上字节操作麻烦，我们把公钥打包成 8 个 32 位字，前缀匹配和回写都按字处理（6.6/6.7 节）。
+
+> 📝 此刻编译 shader 会报 `fe_towords` 未定义——正常，6.6 节写完它再编译。
