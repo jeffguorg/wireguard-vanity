@@ -7,16 +7,19 @@
 先来个短的，秒出结果：
 
 ```console
-$ cargo run --release -- Hi
-前缀 "Hi"：期望尝试次数 ≈ 2^12.0
-私钥: FCO51GufpOG4j4jGgKel3h3xVMbvccSpLeO/v6BjB0I=
-公钥: HilR2hg5E1h/1W0aarTYEWZteZQSP5vZNqiagafgIEY=
-完成：共尝试 4194304 次，耗时 0.4s，平均 10.8 M/s
+$ cargo run --release -- MiAn
+前缀 "MiAn"：期望尝试次数 ≈ 2^24.0
+私钥: UCQMychEP+EzU/sO+dJE7wALig5VB4I59ubCbgNVM2I=
+公钥: MiAnSvsQliy5zACjuARhCPoAV7kTjIjlJKxA1OyGRiE=
+
+完成：共尝试 12582912 次，耗时 1.2s，平均 10.8 M/s
 ```
 
 （你的具体密钥会不一样——搜索起点是时间戳随机化的。）
 
-要点：**公钥确实以 `Hi` 开头**。进度和速率走 stderr，密钥对走 stdout，可以安全重定向：
+4 字符前缀每轮期望命中约 0.25 个（一轮 2²² 个候选、命中率 1/2²⁴），通常几轮内就能出一对；而 2 字符前缀一轮期望命中约 1024 个，会打满 64 个 slot 刷屏（见 7.3）。
+
+要点：**公钥确实以 `MiAn` 开头**。进度和速率走 stderr，密钥对走 stdout，可以安全重定向：
 
 ```console
 $ cargo run --release -- Hello --count 3 > keys.txt
@@ -24,11 +27,11 @@ $ cargo run --release -- Hello --count 3 > keys.txt
 
 ## wg pubkey 交叉验证（第三层）
 
-程序自己已经用 CPU 实现复查过（7.3 节的 debug_assert），但「我们的 GPU 和我们的 CPU 犯同一个错」的可能性要用一个**完全独立的第三方**排除——WireGuard 官方工具：
+程序打印的公钥本身就是用我们的 CPU 实现从私钥重算的；debug 构建下 7.3 节的 `debug_assert` 还会额外断言一次前缀匹配（release 下不编译）。但「我们的 GPU 和我们的 CPU 犯同一个错」的可能性要用一个**完全独立的第三方**排除——WireGuard 官方工具：
 
 ```console
-$ echo 'FCO51GufpOG4j4jGgKel3h3xVMbvccSpLeO/v6BjB0I=' | wg pubkey
-HilR2hg5E1h/1W0aarTYEWZteZQSP5vZNqiagafgIEY=
+$ echo 'UCQMychEP+EzU/sO+dJE7wALig5VB4I59ubCbgNVM2I=' | wg pubkey
+MiAnSvsQliy5zACjuARhCPoAV7kTjIjlJKxA1OyGRiE=
 ```
 
 `wg pubkey` 输出的公钥和程序打印的逐字符一致——三层验证闭环：
@@ -45,7 +48,7 @@ HilR2hg5E1h/1W0aarTYEWZteZQSP5vZNqiagafgIEY=
 
 ```ini
 [Interface]
-PrivateKey = FCO51GufpOG4j4jGgKel3h3xVMbvccSpLeO/v6BjB0I=
+PrivateKey = UCQMychEP+EzU/sO+dJE7wALig5VB4I59ubCbgNVM2I=
 ...
 ```
 

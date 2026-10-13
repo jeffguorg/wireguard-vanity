@@ -4,11 +4,12 @@
 
 ## 创建项目
 
+先 `cd ~` 离开 2.3 节的练手目录 `hello`——别把新项目嵌套建在它里面。然后：
+
 ```console
 $ cargo new wg-vanity-opencl
 $ cd wg-vanity-opencl
 ```
-
 ## Cargo.toml
 
 把 `Cargo.toml` 改成下面这样（与仓库最终版逐字一致）：

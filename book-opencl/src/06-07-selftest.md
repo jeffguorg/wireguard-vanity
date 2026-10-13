@@ -31,7 +31,7 @@ __kernel void selftest_keys(u64 seed, __global u8 *pubs) {
 
 ## kernel.cl 完工检查
 
-到这里 `kernel.cl` 应该是完整的：文件头 → sm64_next → fe_* → fe_invert → fe_tobytes → cswap → wg_pubkey → derive_key → vanity → selftest_keys，约 334 行。和第 6 章开头的文件地图对一遍，缺哪段回哪节补。
+到这里 `kernel.cl` 应该是完整的：文件头 → sm64_next → fe_* → fe_invert → fe_tobytes → cswap → wg_pubkey → derive_key → vanity → selftest_keys，330 余行。和第 6 章开头的文件地图对一遍，缺哪段回哪节补。
 
 它还**不能被单独编译运行**——OpenCL kernel 要等宿主程序在运行时喂给驱动编译。这正是下一章的内容。
 

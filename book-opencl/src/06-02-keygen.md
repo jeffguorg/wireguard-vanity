@@ -92,7 +92,7 @@ mod tests {
 
 敲完跑一下：`cargo test` 应该变成 4 个测试全过（新增 `keygen::tests::derived_keys_work`）。
 
-> 💡 补给：cargo 输出里**黄色 warning ≠ 红色 error**。这会你可能看到 `derive_key`、`splitmix64` 等函数「never used」的警告——是暂时的，第 7 章的 main 会用上它们。只要 `cargo test` 全绿就算过关。
+> 💡 补给：cargo 输出里**黄色 warning ≠ 红色 error**。这会你可能看到（`cargo build` 时）`derive_key`、`splitmix64` 等函数「never used」的警告——是暂时的，第 7 章的 main 会用上它们。只要 `cargo test` 全绿就算过关。
 
 ## 小结
 

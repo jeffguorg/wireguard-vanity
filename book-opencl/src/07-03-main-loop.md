@@ -91,6 +91,8 @@
 
 > 💡 补给：`debug_assert!` 只在 debug 构建生效，release 下编译为零开销——「验证不花生产环境的钱」。`Instant::now()` 是单调时钟，测耗时专用（不受系统时间调整影响）。
 
+> 💡 补给：此刻 `cargo build` 会报 `run_selftest` 未定义（`cannot find function`）——它下节才写，写完就绿了。
+
 ## 小结
 
 main 函数完成。跑长前缀前，先用下节的 selftest 确认 GPU 算的每一个密钥都对。
