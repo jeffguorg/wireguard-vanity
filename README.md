@@ -15,7 +15,7 @@ $ cargo run --release -- <前缀> [--count N] [--round-log2 N]
 $ cargo run --release -- --selftest [N]   # GPU 与 curve25519-dalek 对拍
 ```
 
-前缀为 base64 字符集（`A-Za-z0-9+/`），长度 1–43。n 字符前缀期望尝试 64^n 次。
+前缀为 base64 字符集（`A-Za-z0-9+/`），长度 1–42。n 字符前缀期望尝试 64^n 次。
 
 ## 正确性
 

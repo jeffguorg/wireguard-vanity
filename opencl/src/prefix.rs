@@ -39,9 +39,9 @@ impl Pattern {
 }
 
 pub fn from_prefix(prefix: &str) -> Result<Pattern, String> {
-    if prefix.is_empty() || prefix.len() > 43 {
+    if prefix.is_empty() || prefix.len() > 42 {
         return Err(format!(
-            "前缀长度需在 1..=43 之间（公钥 base64 共 44 字符，末位固定为 '='），当前 {}",
+            "前缀长度需在 1..=42 之间（43 个字符需要 33 字节的比较窗口，已超出公钥的 32 字节），当前 {}",
             prefix.len()
         ));
     }
@@ -89,7 +89,7 @@ mod tests {
         for n in 1..=20 {
             let p = from_prefix(&b64[..n]).unwrap();
             assert!(p.matches(&pubkey), "前缀 {:?} 应匹配", &b64[..n]);
-            // 把前缀最后一个字符换掉，通常应不再匹配（构造一个必然不同的）
+            // 翻转公钥第 0 字节的最低位：n>1 时该字节掩码为 0xFF，必然不再匹配
             let mut bad = pubkey;
             bad[0] ^= 0x01;
             if n > 1 {
@@ -101,6 +101,7 @@ mod tests {
     #[test]
     fn rejects_bad_input() {
         assert!(from_prefix("").is_err());
+        assert!(from_prefix(&"A".repeat(43)).is_err());
         assert!(from_prefix(&"A".repeat(44)).is_err());
         assert!(from_prefix("ab= ").is_err());
     }
