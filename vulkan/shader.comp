@@ -1,0 +1,355 @@
+// WireGuard 公钥前缀搜索 compute shader（GLSL → SPIR-V）。
+//
+// 与 OpenCL 版 kernel.cl、宿主端 Rust 参考实现（src/fe.rs 等）一一对应。
+// 编译两次：默认生成 vanity 入口；加 -DSELFTEST 生成自检入口。
+
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+layout(local_size_x = 128) in;
+
+// push constant：每轮不变的参数（种子、前缀模式）
+layout(push_constant) uniform Push {
+    uint64_t seed;
+    uint patlen;
+    uint pat[11];  // 44 字节，按小端打包进 uint
+    uint mask[11];
+    uint pad;      // 让块大小对齐到 8 字节（104），与 Rust 端结构体一致
+} pc;
+
+#ifdef SELFTEST
+layout(set = 0, binding = 0) writeonly buffer Pubs {
+    uint64_t pubs[];
+};
+#else
+layout(set = 0, binding = 0) buffer Results {
+    uint count;     // 命中计数（atomicAdd）
+    uint64_t keys[]; // 每个命中写 4 个 u64（私钥）
+};
+#endif
+
+struct fe { uint64_t v[10]; };
+
+const uint64_t M26 = 0x3ffffffUL;
+const uint64_t M25 = 0x1ffffffUL;
+
+// ---------------- splitmix64 私钥派生 ----------------
+
+uint64_t sm64_next(inout uint64_t s) {
+    s += 0x9E3779B97F4A7C15UL;
+    uint64_t z = s;
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+    return z ^ (z >> 31);
+}
+
+// ---------------- 域运算 ----------------
+
+fe fe_carry(fe h) {
+    uint64_t c;
+    c = h.v[0] >> 26; h.v[1] += c; h.v[0] &= M26;
+    c = h.v[1] >> 25; h.v[2] += c; h.v[1] &= M25;
+    c = h.v[2] >> 26; h.v[3] += c; h.v[2] &= M26;
+    c = h.v[3] >> 25; h.v[4] += c; h.v[3] &= M25;
+    c = h.v[4] >> 26; h.v[5] += c; h.v[4] &= M26;
+    c = h.v[5] >> 25; h.v[6] += c; h.v[5] &= M25;
+    c = h.v[6] >> 26; h.v[7] += c; h.v[6] &= M26;
+    c = h.v[7] >> 25; h.v[8] += c; h.v[7] &= M25;
+    c = h.v[8] >> 26; h.v[9] += c; h.v[8] &= M26;
+    c = h.v[9] >> 25; h.v[0] += 19 * c; h.v[9] &= M25;
+    c = h.v[0] >> 26; h.v[1] += c; h.v[0] &= M26;
+    return h;
+}
+
+fe fe_add(fe a, fe b) {
+    fe h;
+    for (int i = 0; i < 10; i++) h.v[i] = a.v[i] + b.v[i];
+    return h;
+}
+
+fe fe_sub(fe a, fe b) {
+    const uint64_t two_p[10] = uint64_t[10](
+        2UL * ((1UL << 26) - 19),
+        2UL * ((1UL << 25) - 1), 2UL * ((1UL << 26) - 1),
+        2UL * ((1UL << 25) - 1), 2UL * ((1UL << 26) - 1),
+        2UL * ((1UL << 25) - 1), 2UL * ((1UL << 26) - 1),
+        2UL * ((1UL << 25) - 1), 2UL * ((1UL << 26) - 1),
+        2UL * ((1UL << 25) - 1)
+    );
+    fe h;
+    for (int i = 0; i < 10; i++) h.v[i] = a.v[i] + two_p[i] - b.v[i];
+    return h;
+}
+
+fe fe_mul(fe f, fe g) {
+    uint64_t f0=f.v[0], f1=f.v[1], f2=f.v[2], f3=f.v[3], f4=f.v[4];
+    uint64_t f5=f.v[5], f6=f.v[6], f7=f.v[7], f8=f.v[8], f9=f.v[9];
+    uint64_t g0=g.v[0], g1=g.v[1], g2=g.v[2], g3=g.v[3], g4=g.v[4];
+    uint64_t g5=g.v[5], g6=g.v[6], g7=g.v[7], g8=g.v[8], g9=g.v[9];
+
+    uint64_t f1_2 = 2*f1, f3_2 = 2*f3, f5_2 = 2*f5, f7_2 = 2*f7, f9_2 = 2*f9;
+    uint64_t g1_19 = 19*g1, g2_19 = 19*g2, g3_19 = 19*g3, g4_19 = 19*g4, g5_19 = 19*g5;
+    uint64_t g6_19 = 19*g6, g7_19 = 19*g7, g8_19 = 19*g8, g9_19 = 19*g9;
+
+    fe h;
+    h.v[0] = f0*g0 + f1_2*g9_19 + f2*g8_19 + f3_2*g7_19 + f4*g6_19
+           + f5_2*g5_19 + f6*g4_19 + f7_2*g3_19 + f8*g2_19 + f9_2*g1_19;
+    h.v[1] = f0*g1 + f1*g0 + f2*g9_19 + f3*g8_19 + f4*g7_19
+           + f5*g6_19 + f6*g5_19 + f7*g4_19 + f8*g3_19 + f9*g2_19;
+    h.v[2] = f0*g2 + f1_2*g1 + f2*g0 + f3_2*g9_19 + f4*g8_19
+           + f5_2*g7_19 + f6*g6_19 + f7_2*g5_19 + f8*g4_19 + f9_2*g3_19;
+    h.v[3] = f0*g3 + f1*g2 + f2*g1 + f3*g0 + f4*g9_19
+           + f5*g8_19 + f6*g7_19 + f7*g6_19 + f8*g5_19 + f9*g4_19;
+    h.v[4] = f0*g4 + f1_2*g3 + f2*g2 + f3_2*g1 + f4*g0
+           + f5_2*g9_19 + f6*g8_19 + f7_2*g7_19 + f8*g6_19 + f9_2*g5_19;
+    h.v[5] = f0*g5 + f1*g4 + f2*g3 + f3*g2 + f4*g1 + f5*g0
+           + f6*g9_19 + f7*g8_19 + f8*g7_19 + f9*g6_19;
+    h.v[6] = f0*g6 + f1_2*g5 + f2*g4 + f3_2*g3 + f4*g2 + f5_2*g1 + f6*g0
+           + f7_2*g9_19 + f8*g8_19 + f9_2*g7_19;
+    h.v[7] = f0*g7 + f1*g6 + f2*g5 + f3*g4 + f4*g3 + f5*g2 + f6*g1 + f7*g0
+           + f8*g9_19 + f9*g8_19;
+    h.v[8] = f0*g8 + f1_2*g7 + f2*g6 + f3_2*g5 + f4*g4
+           + f5_2*g3 + f6*g2 + f7_2*g1 + f8*g0 + f9_2*g9_19;
+    h.v[9] = f0*g9 + f1*g8 + f2*g7 + f3*g6 + f4*g5
+           + f5*g4 + f6*g3 + f7*g2 + f8*g1 + f9*g0;
+    return fe_carry(h);
+}
+
+fe fe_sq(fe f) {
+    uint64_t f0=f.v[0], f1=f.v[1], f2=f.v[2], f3=f.v[3], f4=f.v[4];
+    uint64_t f5=f.v[5], f6=f.v[6], f7=f.v[7], f8=f.v[8], f9=f.v[9];
+
+    uint64_t f0_2 = 2*f0, f1_2 = 2*f1, f2_2 = 2*f2, f3_2 = 2*f3, f4_2 = 2*f4;
+    uint64_t f5_2 = 2*f5, f6_2 = 2*f6, f7_2 = 2*f7;
+    uint64_t f5_38 = 38*f5, f6_19 = 19*f6, f7_38 = 38*f7, f8_19 = 19*f8, f9_38 = 38*f9;
+
+    fe h;
+    h.v[0] = f0*f0 + f1_2*f9_38 + f2_2*f8_19 + f3_2*f7_38 + f4_2*f6_19 + f5*f5_38;
+    h.v[1] = f0_2*f1 + f2*f9_38 + f3_2*f8_19 + f4*f7_38 + f5_2*f6_19;
+    h.v[2] = f0_2*f2 + f1_2*f1 + f3_2*f9_38 + f4_2*f8_19 + f5_2*f7_38 + f6*f6_19;
+    h.v[3] = f0_2*f3 + f1_2*f2 + f4*f9_38 + f5_2*f8_19 + f6*f7_38;
+    h.v[4] = f0_2*f4 + f1_2*f3_2 + f2*f2 + f5_2*f9_38 + f6_2*f8_19 + f7*f7_38;
+    h.v[5] = f0_2*f5 + f1_2*f4 + f2_2*f3 + f6*f9_38 + f7_2*f8_19;
+    h.v[6] = f0_2*f6 + f1_2*f5_2 + f2_2*f4 + f3_2*f3 + f7_2*f9_38 + f8*f8_19;
+    h.v[7] = f0_2*f7 + f1_2*f6 + f2_2*f5 + f3_2*f4 + f8*f9_38;
+    h.v[8] = f0_2*f8 + f1_2*f7_2 + f2_2*f6 + f3_2*f5_2 + f4*f4 + f9*f9_38;
+    h.v[9] = f0_2*f9 + f1_2*f8 + f2_2*f7 + f3_2*f6 + f4_2*f5;
+    return fe_carry(h);
+}
+
+fe fe_mul121665(fe f) {
+    fe h;
+    for (int i = 0; i < 10; i++) h.v[i] = f.v[i] * 121665;
+    return h;
+}
+
+fe fe_invert(fe z) {
+    fe t0 = fe_sq(z);
+    fe t1 = fe_sq(t0);
+    t1 = fe_sq(t1);
+    t1 = fe_mul(z, t1);
+    t0 = fe_mul(t0, t1);
+    fe t2 = fe_sq(t0);
+    t1 = fe_mul(t1, t2);
+
+    t2 = fe_sq(t1);
+    for (int i = 1; i < 5; i++) t2 = fe_sq(t2);
+    t1 = fe_mul(t2, t1);
+
+    t2 = fe_sq(t1);
+    for (int i = 1; i < 10; i++) t2 = fe_sq(t2);
+    t2 = fe_mul(t2, t1);
+
+    fe t3 = fe_sq(t2);
+    for (int i = 1; i < 20; i++) t3 = fe_sq(t3);
+    t2 = fe_mul(t3, t2);
+
+    t2 = fe_sq(t2);
+    for (int i = 1; i < 10; i++) t2 = fe_sq(t2);
+    t1 = fe_mul(t2, t1);
+
+    t2 = fe_sq(t1);
+    for (int i = 1; i < 50; i++) t2 = fe_sq(t2);
+    t2 = fe_mul(t2, t1);
+
+    t3 = fe_sq(t2);
+    for (int i = 1; i < 100; i++) t3 = fe_sq(t3);
+    t2 = fe_mul(t3, t2);
+
+    t2 = fe_sq(t2);
+    for (int i = 1; i < 50; i++) t2 = fe_sq(t2);
+    t1 = fe_mul(t2, t1);
+
+    t1 = fe_sq(t1);
+    for (int i = 1; i < 5; i++) t1 = fe_sq(t1);
+    return fe_mul(t1, t0);
+}
+
+// 强归约 + 打包成 8 个 uint（32 字节小端序）
+void fe_towords(fe h, out uint pw[8]) {
+    h = fe_carry(h);
+
+    uint64_t q = (19 * h.v[9] + (1UL << 24)) >> 25;
+    q = (h.v[0] + q) >> 26;
+    q = (h.v[1] + q) >> 25;
+    q = (h.v[2] + q) >> 26;
+    q = (h.v[3] + q) >> 25;
+    q = (h.v[4] + q) >> 26;
+    q = (h.v[5] + q) >> 25;
+    q = (h.v[6] + q) >> 26;
+    q = (h.v[7] + q) >> 25;
+    q = (h.v[8] + q) >> 26;
+    q = (h.v[9] + q) >> 25;
+
+    h.v[0] += 19 * q;
+    // 最终进位链：最高 limb 溢出的位代表 q·2^255，直接丢弃
+    uint64_t c;
+    c = h.v[0] >> 26; h.v[1] += c; h.v[0] &= M26;
+    c = h.v[1] >> 25; h.v[2] += c; h.v[1] &= M25;
+    c = h.v[2] >> 26; h.v[3] += c; h.v[2] &= M26;
+    c = h.v[3] >> 25; h.v[4] += c; h.v[3] &= M25;
+    c = h.v[4] >> 26; h.v[5] += c; h.v[4] &= M26;
+    c = h.v[5] >> 25; h.v[6] += c; h.v[5] &= M25;
+    c = h.v[6] >> 26; h.v[7] += c; h.v[6] &= M26;
+    c = h.v[7] >> 25; h.v[8] += c; h.v[7] &= M25;
+    c = h.v[8] >> 26; h.v[9] += c; h.v[8] &= M26;
+    h.v[9] &= M25;
+
+    uint64_t v0=h.v[0], v1=h.v[1], v2=h.v[2], v3=h.v[3], v4=h.v[4];
+    uint64_t v5=h.v[5], v6=h.v[6], v7=h.v[7], v8=h.v[8], v9=h.v[9];
+    uint b[32];
+    b[0]  = uint(v0) & 0xFFu;
+    b[1]  = uint(v0 >> 8) & 0xFFu;
+    b[2]  = uint(v0 >> 16) & 0xFFu;
+    b[3]  = uint((v0 >> 24) | (v1 << 2)) & 0xFFu;
+    b[4]  = uint(v1 >> 6) & 0xFFu;
+    b[5]  = uint(v1 >> 14) & 0xFFu;
+    b[6]  = uint((v1 >> 22) | (v2 << 3)) & 0xFFu;
+    b[7]  = uint(v2 >> 5) & 0xFFu;
+    b[8]  = uint(v2 >> 13) & 0xFFu;
+    b[9]  = uint((v2 >> 21) | (v3 << 5)) & 0xFFu;
+    b[10] = uint(v3 >> 3) & 0xFFu;
+    b[11] = uint(v3 >> 11) & 0xFFu;
+    b[12] = uint((v3 >> 19) | (v4 << 6)) & 0xFFu;
+    b[13] = uint(v4 >> 2) & 0xFFu;
+    b[14] = uint(v4 >> 10) & 0xFFu;
+    b[15] = uint(v4 >> 18) & 0xFFu;
+    b[16] = uint(v5) & 0xFFu;
+    b[17] = uint(v5 >> 8) & 0xFFu;
+    b[18] = uint(v5 >> 16) & 0xFFu;
+    b[19] = uint((v5 >> 24) | (v6 << 1)) & 0xFFu;
+    b[20] = uint(v6 >> 7) & 0xFFu;
+    b[21] = uint(v6 >> 15) & 0xFFu;
+    b[22] = uint((v6 >> 23) | (v7 << 3)) & 0xFFu;
+    b[23] = uint(v7 >> 5) & 0xFFu;
+    b[24] = uint(v7 >> 13) & 0xFFu;
+    b[25] = uint((v7 >> 21) | (v8 << 4)) & 0xFFu;
+    b[26] = uint(v8 >> 4) & 0xFFu;
+    b[27] = uint(v8 >> 12) & 0xFFu;
+    b[28] = uint((v8 >> 20) | (v9 << 6)) & 0xFFu;
+    b[29] = uint(v9 >> 2) & 0xFFu;
+    b[30] = uint(v9 >> 10) & 0xFFu;
+    b[31] = uint(v9 >> 18) & 0xFFu;
+
+    for (int j = 0; j < 8; j++) {
+        pw[j] = b[4*j] | (b[4*j+1] << 8) | (b[4*j+2] << 16) | (b[4*j+3] << 24);
+    }
+}
+
+// ---------------- X25519 ----------------
+
+void cswap(uint64_t swap, inout fe a, inout fe b) {
+    uint64_t mask = 0UL - swap;
+    for (int i = 0; i < 10; i++) {
+        uint64_t t = mask & (a.v[i] ^ b.v[i]);
+        a.v[i] ^= t;
+        b.v[i] ^= t;
+    }
+}
+
+// 公钥 = X25519(w, 基点 9)，输出为 8 个 uint
+void wg_pubkey(uint64_t w[4], out uint pw[8]) {
+    fe x1; x1.v[0] = 9;
+    for (int i = 1; i < 10; i++) x1.v[i] = 0;
+    fe x2; x2.v[0] = 1;
+    for (int i = 1; i < 10; i++) x2.v[i] = 0;
+    fe z2;
+    for (int i = 0; i < 10; i++) z2.v[i] = 0;
+    fe x3 = x1;
+    fe z3 = x2;
+
+    uint64_t swap = 0UL;
+    for (int t = 254; t >= 0; t--) {
+        uint64_t bit = (w[t >> 6] >> (t & 63)) & 1UL;
+        swap ^= bit;
+        cswap(swap, x2, x3);
+        cswap(swap, z2, z3);
+        swap = bit;
+
+        fe a  = fe_add(x2, z2);
+        fe aa = fe_sq(a);
+        fe b  = fe_sub(x2, z2);
+        fe bb = fe_sq(b);
+        fe e  = fe_sub(aa, bb);
+        fe c2 = fe_add(x3, z3);
+        fe d  = fe_sub(x3, z3);
+        fe da = fe_mul(d, a);
+        fe cb = fe_mul(c2, b);
+        fe dac = fe_add(da, cb);
+        fe dmc = fe_sub(da, cb);
+
+        x3 = fe_sq(dac);
+        z3 = fe_mul(x1, fe_sq(dmc));
+        x2 = fe_mul(aa, bb);
+        z2 = fe_mul(e, fe_add(aa, fe_carry(fe_mul121665(e))));
+    }
+    cswap(swap, x2, x3);
+    cswap(swap, z2, z3);
+
+    fe_towords(fe_mul(x2, fe_invert(z2)), pw);
+}
+
+void derive_key(uint64_t seed, uint64_t gid, out uint64_t w[4]) {
+    uint64_t s = seed + gid * 0x9E3779B97F4A7C15UL;
+    w[0] = sm64_next(s);
+    w[1] = sm64_next(s);
+    w[2] = sm64_next(s);
+    w[3] = sm64_next(s);
+    w[0] &= ~7UL;
+    w[3] = (w[3] & 0x7FFFFFFFFFFFFFFFUL) | 0x4000000000000000UL;
+}
+
+// ---------------- 入口 ----------------
+
+void main() {
+    uint64_t gid = uint64_t(gl_GlobalInvocationID.x);
+    uint64_t w[4];
+    derive_key(pc.seed, gid, w);
+
+    uint pw[8];
+    wg_pubkey(w, pw);
+
+#ifdef SELFTEST
+    // 写回完整公钥，宿主端与参考实现比对
+    uint gi = uint(gid) * 4u;
+    pubs[gi + 0u] = uint64_t(pw[0]) | (uint64_t(pw[1]) << 32);
+    pubs[gi + 1u] = uint64_t(pw[2]) | (uint64_t(pw[3]) << 32);
+    pubs[gi + 2u] = uint64_t(pw[4]) | (uint64_t(pw[5]) << 32);
+    pubs[gi + 3u] = uint64_t(pw[6]) | (uint64_t(pw[7]) << 32);
+#else
+    for (uint i = 0u; i < pc.patlen; i++) {
+        uint sh = (i & 3u) * 8u;
+        uint b  = (pw[i >> 2] >> sh) & 0xFFu;
+        uint pb = (pc.pat[i >> 2] >> sh) & 0xFFu;
+        uint mb = (pc.mask[i >> 2] >> sh) & 0xFFu;
+        if ((b & mb) != pb) return;
+    }
+    uint slot = atomicAdd(count, 1u);
+    if (slot < 64u) {
+        keys[slot * 4u + 0u] = w[0];
+        keys[slot * 4u + 1u] = w[1];
+        keys[slot * 4u + 2u] = w[2];
+        keys[slot * 4u + 3u] = w[3];
+    }
+#endif
+}

@@ -1,0 +1,12 @@
+[package]
+name = "wg-vanity-vulkan"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vulkano = "0.35"
+base64 = "0.22"
+curve25519-dalek = "5"
+
+[profile.release]
+opt-level = 3
