@@ -1,5 +1,10 @@
 # wireguard-vanity
 
+> **学习项目**：本仓库以教学为目的——两条 GPU 路径各自配了一本从零跟敲的
+> mdbook 教程（`book-opencl/`、`book-vulkan/`），实现以清晰可教为先，
+> 性能未做极致优化。如果你想直接搜前缀而不是学习原理，建议改用成熟的
+> vanity 工具。
+
 用 GPU 暴力搜索「公钥带指定前缀」的 WireGuard 密钥对。两条实现路径：
 
 - `opencl/` — Rust（opencl3）+ OpenCL C kernel
